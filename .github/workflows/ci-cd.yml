@@ -1,0 +1,207 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  # Job 1: Lint and Type Check
+  lint:
+    name: Lint and Type Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run ESLint
+        run: npm run lint --if-present
+      
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+  # Job 2: Build
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build application
+        run: npm run build
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
+  # Job 3: Test (if you have tests)
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test --if-present
+        continue-on-error: true
+
+  # Job 4: Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://your-domain.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy to server
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          # Create deployment package
+          tar -czf deploy.tar.gz dist/ package.json package-lock.json infrastructure/
+          
+          # Copy to server
+          scp deploy.tar.gz $SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/
+          
+          # Execute deployment script on server
+          ssh $SERVER_USER@$SERVER_HOST << 'EOF'
+            cd ${{ secrets.DEPLOY_PATH }}
+            tar -xzf deploy.tar.gz
+            npm ci --omit=dev
+            pm2 reload infrastructure/pm2/ecosystem.config.js --env production
+            rm deploy.tar.gz
+          EOF
+      
+      - name: Health check
+        run: |
+          sleep 10
+          curl -f https://your-domain.com/health || exit 1
+      
+      - name: Notify deployment success
+        if: success()
+        run: echo "Deployment to production successful!"
+      
+      - name: Notify deployment failure
+        if: failure()
+        run: echo "Deployment to production failed!"
+
+  # Job 5: Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://staging.your-domain.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
+      
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.STAGING_SERVER_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy to staging server
+        env:
+          SERVER_HOST: ${{ secrets.STAGING_SERVER_HOST }}
+          SERVER_USER: ${{ secrets.STAGING_SERVER_USER }}
+          DEPLOY_PATH: ${{ secrets.STAGING_DEPLOY_PATH }}
+        run: |
+          tar -czf deploy.tar.gz dist/ package.json package-lock.json infrastructure/
+          scp deploy.tar.gz $SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/
+          
+          ssh $SERVER_USER@$SERVER_HOST << 'EOF'
+            cd ${{ secrets.STAGING_DEPLOY_PATH }}
+            tar -xzf deploy.tar.gz
+            npm ci --omit=dev
+            pm2 reload infrastructure/pm2/ecosystem.config.js --env development
+            rm deploy.tar.gz
+          EOF
+      
+      - name: Health check
+        run: |
+          sleep 10
+          curl -f https://staging.your-domain.com/health || exit 1

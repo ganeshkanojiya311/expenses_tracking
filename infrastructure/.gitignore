@@ -1,0 +1,23 @@
+# Infrastructure .gitignore
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# SSL certificates
+ssl/
+*.pem
+*.key
+*.crt
+
+# Backup files
+*.backup
+*.backup.*
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,27 @@
+Yo
+I am making a student expense tracking platform 
+in this i have created user login till now
+i want to create  a other apis to 
+There us a transaction with week, month, year filters
+
+1. It have a balance income , expense, savings, gining a total remaining balance by subtracting the income from the expense even adding if he get an money
+2. It is like a deposti and withdrawl in a bank account
+
+In transaction it have a date, amount, type [deposti, withdrawl], category [Food, Transport, Rent, Shopping, Other], etc
+
+3. have a api of recent transactions
+4. have api of all transactions
+5. have api of all transactions by week, month, year
+6. have api of all transactions by category
+
+7. have a montly saving goal and a yearly saving goal
+
+8. have a Top spending day in week , month, year filters
+9. Avg spending per day in week , month, year filters and also compare with the previous week and give a percentage of increase or decrease
+10 most use categories in week , month, year filters
+11 Have a saving rate in week , month, year filters
+
+12 Income vs Expense in week , month, year filters
+
+13. api for weekly, monthly, yearly filters for spending analysis
+14 Logout api
