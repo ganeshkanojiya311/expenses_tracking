@@ -92,6 +92,18 @@ export class TransactionController {
     }),
   ];
 
+  getTransactionsByCategoryWithTotalAmount = [
+    validator(TransactionValidation.auth, ValidationSource.HEADER),
+    asyncHandler(async (req: Request, res: Response) => {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (!token) {
+        throw new BadRequestError('Token is required');
+      }
+      const result = await this.service.getTransactionsByCategoryWithTotalAmount(token);
+      new SuccessResponse('Transactions fetched successfully', result).send(res);
+    })
+  ];
+
   createSavingGoal = [
     validator(TransactionValidation.auth, ValidationSource.HEADER),
     asyncHandler(async (req: Request, res: Response) => {

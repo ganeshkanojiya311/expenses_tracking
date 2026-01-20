@@ -189,6 +189,8 @@ router.get('/recent', controller.getRecentTransactions);
  */
 router.get('/category/:category', controller.getTransactionsByCategory);
 
+router.get('/total-amounts-by-category', controller.getTransactionsByCategoryWithTotalAmount);
+
 /**
  * @swagger
  * /v1/transaction/saving-goal:

@@ -1,4 +1,4 @@
-import { BadRequestError, NotFoundError } from '../../../core/ApiError';
+import {  NotFoundError } from '../../../core/ApiError';
 import { IAuthService } from '../../auth/interfaces/i-auth.service';
 import { AuthService } from '../../auth/services/auth.service';
 import {
@@ -7,10 +7,11 @@ import {
 } from '../dtos/savingGoal.dto';
 import { CreateTransactionDTO } from '../dtos/transaction.dto';
 import { SavingGoal } from '../entities/savingGoal.entity';
-import { Transaction } from '../entities/transaction.entity';
+import { Transaction, TransactionCategory } from '../entities/transaction.entity';
 import { ITransactionRepository } from '../interfaces/i-transaction.repository';
 import { ITransactionService } from '../interfaces/i-transaction.service';
 import { TransactionRepository } from '../repositories/transaction.repository';
+import { CategoryTotal } from '../types/types';
 
 export class TransactionService implements ITransactionService {
   private repository: ITransactionRepository;
@@ -76,7 +77,7 @@ export class TransactionService implements ITransactionService {
   async getTransactionsByCategory(
     category: string,
     token: string,
-  ): Promise<Transaction[]> {
+  ): Promise<{ transactions: Transaction[]; totalAmount: number }> {
     const { valid, id } = await this.authService.validateToken(token);
     if (!valid) {
       throw new NotFoundError('User not found');
@@ -88,8 +89,45 @@ export class TransactionService implements ITransactionService {
     if (transactions.length === 0) {
       throw new NotFoundError('Transactions not found');
     }
-    return transactions;
+    let totalAmount = 0;
+    for (const transaction of transactions) {
+      totalAmount += transaction.amount;
+    }
+    return { transactions, totalAmount };
   }
+
+  async getTransactionsByCategoryWithTotalAmount(
+    token: string
+  ): Promise<CategoryTotal[]> {
+    const { valid, id } = await this.authService.validateToken(token);
+  
+    if (!valid) {
+      throw new NotFoundError('User not found');
+    }
+  
+    const transactions = await this.repository.getTransactionsByUserId(id || '');
+
+    if (transactions.length === 0) {
+      throw new NotFoundError('Transactions not found');
+    }
+  
+    const categoryMap = new Map<string, number>();
+  
+    for (const { category, amount } of transactions) {
+      categoryMap.set(
+        category as unknown as string,
+        (categoryMap.get(category as unknown as string) ?? 0) + amount
+      );
+    }
+  
+    return Array.from(categoryMap, ([category, totalAmount]) => ({
+      type: transactions[0].type,
+      category: category as unknown as TransactionCategory,
+      totalAmount,
+      createdAt: transactions[0].createdAt,
+    }));
+  }
+  
 
   async createSavingGoal(
     token: string,

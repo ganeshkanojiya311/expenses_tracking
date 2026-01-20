@@ -5,6 +5,7 @@ import {
 import { CreateTransactionDTO } from '../dtos/transaction.dto';
 import { SavingGoal } from '../entities/savingGoal.entity';
 import { Transaction } from '../entities/transaction.entity';
+import { CategoryTotal } from '../types/types';
 
 export interface ITransactionService {
   createTransaction(
@@ -17,7 +18,8 @@ export interface ITransactionService {
   getTransactionsByCategory(
     category: string,
     token: string,
-  ): Promise<Transaction[]>;
+  ): Promise<{ transactions: Transaction[]; totalAmount: number }>;
+  getTransactionsByCategoryWithTotalAmount(token: string): Promise<CategoryTotal[]>;
 
   createSavingGoal(
     token: string,
