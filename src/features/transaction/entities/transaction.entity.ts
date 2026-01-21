@@ -4,12 +4,11 @@ export interface TransactionType {
 }
 
 export interface TransactionCategory {
-  FOOD: 'withdrawal';
+  FOOD: 'Food';
   TRANSPORT: 'Transport';
   RENT: 'Rent';
   SHOPPING: 'Shopping';
   OTHER: 'Other';
-  INCOME: 'Income';
 }
 
 export class Transaction {

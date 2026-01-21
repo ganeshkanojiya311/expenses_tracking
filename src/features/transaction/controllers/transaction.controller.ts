@@ -11,11 +11,26 @@ import {
   CreateSavingGoalDTO,
   UpdateSavingGoalDTO,
 } from '../dtos/savingGoal.dto';
+import { PeriodFilter } from '../types/types';
 
 export class TransactionController {
   private service: ITransactionService;
   constructor() {
     this.service = new TransactionService();
+  }
+
+  private parseOptionalDate(value: unknown): Date | undefined {
+    if (value === undefined || value === null) return undefined;
+    const raw = Array.isArray(value) ? value[0] : value;
+    if (typeof raw !== 'string' || raw.trim() === '') return undefined;
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestError(
+        'Invalid date. Use ISO format like 2026-01-15 or 2026-01-15T00:00:00.000Z',
+      );
+    }
+    return parsed;
   }
 
   createTransaction = [
@@ -33,22 +48,33 @@ export class TransactionController {
   ];
 
   getAllTransactions = [
+    validator(TransactionValidation.query, ValidationSource.QUERY),
     asyncHandler(async (req: Request, res: Response) => {
-      const result = await this.service.getAllTransactions();
-      new SuccessResponse('All transactions fetched successfully', result).send(
-        res,
-      );
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 10;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string, 10)
+        : 10;
+
+      const period = req.query.period as PeriodFilter | undefined;
+      const date = this.parseOptionalDate(req.query.date);
+
+      const result = await this.service.getAllTransactions(page, limit, period, date);
+      new SuccessResponse('All transactions fetched successfully', result).send(res);
     }),
   ];
 
   getTransactionsByUserId = [
     validator(TransactionValidation.auth, ValidationSource.HEADER),
+    validator(TransactionValidation.query, ValidationSource.QUERY),
     asyncHandler(async (req: Request, res: Response) => {
       const token = req.headers.authorization?.split(' ')[1];
       if (!token) {
         throw new BadRequestError('Token is required');
       }
-      const result = await this.service.getTransactionsByUserId(token);
+      const period = req.query.period as PeriodFilter | undefined;
+      const date = this.parseOptionalDate(req.query.date);
+
+      const result = await this.service.getTransactionsByUserId(token, period, date);
       new SuccessResponse('Transactions fetched successfully', result).send(
         res,
       );

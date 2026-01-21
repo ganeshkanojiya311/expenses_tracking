@@ -11,8 +11,10 @@ export class TransactionValidation {
   });
 
   static query = Joi.object({
-    page: Joi.number().optional(),
-    limit: Joi.number().optional(),
+    page: Joi.number().integer().min(1).optional(),
+    limit: Joi.number().integer().min(1).max(100).optional(),
+    period: Joi.string().valid('week', 'month', 'year').optional(),
+    date: Joi.date().iso().optional(),
     // Add other query params
   });
 

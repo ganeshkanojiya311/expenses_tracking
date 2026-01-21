@@ -53,6 +53,34 @@ router.post('/create', controller.createTransaction);
  *     summary: Get all transactions (Admin)
  *     tags: [Transactions]
  *     description: Retrieves all transactions from all users (admin endpoint)
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number (1-based)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Items per page
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *           enum: [week, month, year]
+ *         description: Filter transactions by week/month/year (based on createdAt). If omitted and `date` is provided, filters by that exact day.
+ *       - in: query
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Optional anchor date (ISO). If `period` is set, it anchors week/month/year; if `period` is omitted, it filters by that exact day.
  *     responses:
  *       200:
  *         description: All transactions fetched successfully
@@ -64,9 +92,23 @@ router.post('/create', controller.createTransaction);
  *                 - type: object
  *                   properties:
  *                     data:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Transaction'
+ *                       type: object
+ *                       properties:
+ *                         transactions:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/Transaction'
+ *                         pagination:
+ *                           type: object
+ *                           properties:
+ *                             page:
+ *                               type: integer
+ *                             limit:
+ *                               type: integer
+ *                             totalItems:
+ *                               type: integer
+ *                             totalPages:
+ *                               type: integer
  */
 router.get('/all-transactions', controller.getAllTransactions);
 
@@ -79,6 +121,19 @@ router.get('/all-transactions', controller.getAllTransactions);
  *     security:
  *       - BearerAuth: []
  *     description: Retrieves all transactions for the authenticated user
+ *     parameters:
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *           enum: [week, month, year]
+ *         description: Filter transactions by week/month/year (based on createdAt). If omitted and `date` is provided, filters by that exact day.
+ *       - in: query
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Optional anchor date (ISO). If `period` is set, it anchors week/month/year; if `period` is omitted, it filters by that exact day.
  *     responses:
  *       200:
  *         description: Transactions fetched successfully

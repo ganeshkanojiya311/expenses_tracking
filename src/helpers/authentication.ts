@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { AuthFailureError } from '../core/ApiError';
 import { AuthService } from '../features/auth/services/auth.service';
+import logger from '../config/logger';
 
 /**
  * Authentication middleware to validate JWT tokens
@@ -37,7 +38,7 @@ const authentication = async (
 
     next();
   } catch (error) {
-    // Logger.error('Authentication error:', error);
+    logger.error('Authentication error:', error);
     next(error);
   }
 };

@@ -13,21 +13,108 @@ import { SavingGoalMapper } from '../mappers/savingGoal.mapper';
 import { TransactionMapper } from '../mappers/transaction.mapper';
 import { SavingGoalModel } from '../models/savingGoal.model';
 import { TransactionModel } from '../models/transaction.model';
+import {
+  endOfMonth,
+  endOfWeek,
+  endOfYear,
+  startOfMonth,
+  startOfWeek,
+  startOfYear,
+} from 'date-fns';
+import { PeriodFilter } from '../types/types';
+import { CreateSavingCategoryGoalDTO } from '../dtos/savingCategoryGoal.dto';
+import { SavingCategoryGoal } from '../entities/savingCategoryGoal.entity';
+import { SavingCategoryGoalMapper } from '../mappers/savingCategoryGoal.mapper';
+import { SavingCategoryGoalModel } from '../models/savingCategoryGoal.model';
 
 export class TransactionRepository implements ITransactionRepository {
+  private utcStartOfDay(d: Date): Date {
+    return new Date(
+      Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0),
+    );
+  }
+
+  private utcEndOfDay(d: Date): Date {
+    return new Date(
+      Date.UTC(
+        d.getUTCFullYear(),
+        d.getUTCMonth(),
+        d.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
+  }
+
+  private buildCreatedAtFilter(period?: PeriodFilter, date?: Date) {
+    if (!period && !date) return {};
+
+    // If only `date` is provided, filter by that specific day.
+    if (!period && date) {
+      return {
+        createdAt: { $gte: this.utcStartOfDay(date), $lte: this.utcEndOfDay(date) },
+      };
+    }
+
+    const anchor = date ?? new Date();
+    let start: Date;
+    let end: Date;
+
+    switch (period) {
+      case 'week':
+        start = startOfWeek(anchor, { weekStartsOn: 1 });
+        end = endOfWeek(anchor, { weekStartsOn: 1 });
+        break;
+      case 'month':
+        start = startOfMonth(anchor);
+        end = endOfMonth(anchor);
+        break;
+      case 'year':
+        start = startOfYear(anchor);
+        end = endOfYear(anchor);
+        break;
+      default:
+        return {};
+    }
+
+    return { createdAt: { $gte: start, $lte: end } };
+  }
+
   async createTransaction(data: CreateTransactionDTO): Promise<Transaction> {
     const modelData = TransactionMapper.toModel(data);
     const created = await TransactionModel.create(modelData);
     return TransactionMapper.toEntity(created);
   }
 
-  async getAllTransactions(): Promise<Transaction[]> {
-    const transactions = await TransactionModel.find();
-    return TransactionMapper.toEntities(transactions);
+  async getAllTransactions(
+    page: number,
+    limit: number,
+    period?: PeriodFilter,
+    date?: Date,
+  ): Promise<{ transactions: Transaction[]; totalItems: number }> {
+    const skip = (page - 1) * limit;
+    const filter = this.buildCreatedAtFilter(period, date);
+
+    const [transactions, totalItems] = await Promise.all([
+      TransactionModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      TransactionModel.countDocuments(filter),
+    ]);
+
+    return { transactions: TransactionMapper.toEntities(transactions), totalItems };
   }
 
-  async getTransactionsByUserId(userId: string): Promise<Transaction[]> {
-    const transactions = await TransactionModel.find({ user_id: userId });
+  async getTransactionsByUserId(
+    userId: string,
+    period?: PeriodFilter,
+    date?: Date,
+  ): Promise<Transaction[]> {
+    const createdAtFilter = this.buildCreatedAtFilter(period, date);
+    const transactions = await TransactionModel.find({
+      user_id: userId,
+      ...createdAtFilter,
+    }).sort({ createdAt: -1 });
     return TransactionMapper.toEntities(transactions);
   }
 
@@ -51,6 +138,12 @@ export class TransactionRepository implements ITransactionRepository {
     });
 
     return TransactionMapper.toEntities(transactions);
+  }
+
+  async createSavingCategoryGoal(data: CreateSavingCategoryGoalDTO): Promise<SavingCategoryGoal> {
+    const modelData = SavingCategoryGoalMapper.toModel(data);
+    const created = await SavingCategoryGoalModel.create(modelData);
+    return SavingCategoryGoalMapper.toEntity(created);
   }
 
   async createSavingGoal(data: CreateSavingGoalDTO): Promise<SavingGoal> {

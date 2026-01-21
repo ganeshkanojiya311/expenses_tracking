@@ -1,4 +1,4 @@
-import {  NotFoundError } from '../../../core/ApiError';
+import { NotFoundError } from '../../../core/ApiError';
 import { IAuthService } from '../../auth/interfaces/i-auth.service';
 import { AuthService } from '../../auth/services/auth.service';
 import {
@@ -11,7 +11,7 @@ import { Transaction, TransactionCategory } from '../entities/transaction.entity
 import { ITransactionRepository } from '../interfaces/i-transaction.repository';
 import { ITransactionService } from '../interfaces/i-transaction.service';
 import { TransactionRepository } from '../repositories/transaction.repository';
-import { CategoryTotal } from '../types/types';
+import { CategoryTotal, PaginationMeta, PeriodFilter } from '../types/types';
 
 export class TransactionService implements ITransactionService {
   private repository: ITransactionRepository;
@@ -38,17 +38,45 @@ export class TransactionService implements ITransactionService {
     return transaction;
   }
 
-  async getAllTransactions(): Promise<Transaction[]> {
-    return this.repository.getAllTransactions();
+  async getAllTransactions(
+    page: number = 1,
+    limit: number = 10,
+    period?: PeriodFilter,
+    date?: Date,
+  ): Promise<{ transactions: Transaction[]; pagination: PaginationMeta }> {
+    const { transactions, totalItems } = await this.repository.getAllTransactions(
+      page,
+      limit,
+      period,
+      date,
+    );
+
+    const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+
+    return {
+      transactions,
+      pagination: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+      },
+    };
   }
 
-  async getTransactionsByUserId(token: string): Promise<Transaction[]> {
+  async getTransactionsByUserId(
+    token: string,
+    period?: PeriodFilter,
+    date?: Date,
+  ): Promise<Transaction[]> {
     const { valid, id } = await this.authService.validateToken(token);
     if (!valid) {
       throw new NotFoundError('User not found');
     }
     const transactions = await this.repository.getTransactionsByUserId(
       id || '',
+      period,
+      date,
     );
     if (transactions.length === 0) {
       throw new NotFoundError('Transactions not found');
@@ -100,26 +128,26 @@ export class TransactionService implements ITransactionService {
     token: string
   ): Promise<CategoryTotal[]> {
     const { valid, id } = await this.authService.validateToken(token);
-  
+
     if (!valid) {
       throw new NotFoundError('User not found');
     }
-  
+
     const transactions = await this.repository.getTransactionsByUserId(id || '');
 
     if (transactions.length === 0) {
       throw new NotFoundError('Transactions not found');
     }
-  
+
     const categoryMap = new Map<string, number>();
-  
+
     for (const { category, amount } of transactions) {
       categoryMap.set(
         category as unknown as string,
         (categoryMap.get(category as unknown as string) ?? 0) + amount
       );
     }
-  
+
     return Array.from(categoryMap, ([category, totalAmount]) => ({
       type: transactions[0].type,
       category: category as unknown as TransactionCategory,
@@ -127,7 +155,7 @@ export class TransactionService implements ITransactionService {
       createdAt: transactions[0].createdAt,
     }));
   }
-  
+
 
   async createSavingGoal(
     token: string,
