@@ -12,6 +12,8 @@ import {
   UpdateSavingGoalDTO,
 } from '../dtos/savingGoal.dto';
 import { PeriodFilter } from '../types/types';
+import { CreateSavingCategoryGoalDTO, UpdateSavingCategoryGoalDTO } from '../dtos/savingCategoryGoal.dto';
+import { TransactionType } from '../entities/transaction.entity';
 
 export class TransactionController {
   private service: ITransactionService;
@@ -19,7 +21,7 @@ export class TransactionController {
     this.service = new TransactionService();
   }
 
-  private parseOptionalDate(value: unknown): Date | undefined {
+  private parseOptionalDate (value: unknown): Date | undefined {
     if (value === undefined || value === null) return undefined;
     const raw = Array.isArray(value) ? value[0] : value;
     if (typeof raw !== 'string' || raw.trim() === '') return undefined;
@@ -71,10 +73,14 @@ export class TransactionController {
       if (!token) {
         throw new BadRequestError('Token is required');
       }
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string, 10)
+        : 10;
       const period = req.query.period as PeriodFilter | undefined;
       const date = this.parseOptionalDate(req.query.date);
 
-      const result = await this.service.getTransactionsByUserId(token, period, date);
+      const result = await this.service.getTransactionsByUserId(token, page, limit, period, date);
       new SuccessResponse('Transactions fetched successfully', result).send(
         res,
       );
@@ -130,6 +136,64 @@ export class TransactionController {
     })
   ];
 
+  getTransactionsByType = [
+    validator(TransactionValidation.auth, ValidationSource.HEADER),
+    asyncHandler(async (req: Request, res: Response) => {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (!token) {
+        throw new BadRequestError('Token is required');
+      }
+      const type = req.query.type as TransactionType;
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+      const period = req.query.period as PeriodFilter | undefined;
+      const date = this.parseOptionalDate(req.query.date);
+
+      const result = await this.service.getTransactionsByType(token, type,page, limit, period, date);
+      new SuccessResponse('Transaction fetched successfully', result).send(res,);
+    })
+  ];
+
+  createSavingCategoryGoal = [
+    validator(TransactionValidation.auth, ValidationSource.HEADER),
+    asyncHandler(async (req: Request, res: Response) => {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (!token) {
+        throw new BadRequestError('Token is required');
+      }
+      const data = new CreateSavingCategoryGoalDTO(req.body);
+      const result = await this.service.createSavingCategoryGoal(token, data);
+      new SuccessResponse('Saving category goal created successfully', result).send(res);
+    }),
+  ];
+
+  getSavingCategoryGoalByUserId = [
+    validator(TransactionValidation.auth, ValidationSource.HEADER),
+    asyncHandler(async (req: Request, res: Response) => {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (!token) {
+        throw new BadRequestError('Token is required');
+      }
+      const result = await this.service.getSavingCategoryGoalByUserId(token);
+      new SuccessResponse('Saving category goals fetched successfully', result).send(res);
+    }),
+  ];
+
+  updateSavingCategoryGoal = [
+    validator(TransactionValidation.auth, ValidationSource.HEADER),
+    validator(TransactionValidation.id, ValidationSource.PARAM),
+    asyncHandler(async (req: Request, res: Response) => {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (!token) {
+        throw new BadRequestError('Token is required');
+      }
+      const id = req.params.id as string;
+      const data = new UpdateSavingCategoryGoalDTO(req.body);
+      const result = await this.service.updateSavingCategoryGoal(id, data);
+      new SuccessResponse('Saving category goal updated successfully', result).send(res);
+    }),
+  ];
+
   createSavingGoal = [
     validator(TransactionValidation.auth, ValidationSource.HEADER),
     asyncHandler(async (req: Request, res: Response) => {
@@ -165,7 +229,6 @@ export class TransactionController {
       }
       const id = req.params.id as string;
       const data = new UpdateSavingGoalDTO(req.body);
-      data.validate();
       const result = await this.service.updateSavingGoal(id, data);
       new SuccessResponse('Saving Goal updated successfully', result).send(res);
     }),

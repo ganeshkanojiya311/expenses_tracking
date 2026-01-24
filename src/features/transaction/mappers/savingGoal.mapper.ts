@@ -2,7 +2,7 @@ import { SavingGoal } from '../entities/savingGoal.entity';
 import { ISavingGoalDocument } from '../models/savingGoal.model';
 
 export class SavingGoalMapper {
-  static toEntity(doc: ISavingGoalDocument): SavingGoal {
+  static toEntity (doc: ISavingGoalDocument): SavingGoal {
     return new SavingGoal({
       id: doc._id.toString(),
       user_id: doc.user_id,
@@ -12,7 +12,7 @@ export class SavingGoalMapper {
     });
   }
 
-  static toModel(entity: Partial<SavingGoal>): Partial<ISavingGoalDocument> {
+  static toModel (entity: Partial<SavingGoal>): Partial<ISavingGoalDocument> {
     const models: any = { ...entity };
     if (entity.id) {
       models._id = entity.id;
@@ -21,11 +21,11 @@ export class SavingGoalMapper {
     return models;
   }
 
-  static toEntities(docs: ISavingGoalDocument[]): SavingGoal[] {
+  static toEntities (docs: ISavingGoalDocument[]): SavingGoal[] {
     return docs.map((doc) => this.toEntity(doc));
   }
 
-  static toModels(
+  static toModels (
     entities: Partial<SavingGoal>[],
   ): Partial<ISavingGoalDocument>[] {
     return entities.map((entity) => this.toModel(entity));

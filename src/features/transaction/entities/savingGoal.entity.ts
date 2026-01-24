@@ -9,7 +9,7 @@ export class SavingGoal {
     Object.assign(this, data);
   }
 
-  toJSON() {
+  toJSON () {
     return {
       id: this.id,
       user_id: this.user_id,

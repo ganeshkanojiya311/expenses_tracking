@@ -246,6 +246,14 @@ router.get('/category/:category', controller.getTransactionsByCategory);
 
 router.get('/total-amounts-by-category', controller.getTransactionsByCategoryWithTotalAmount);
 
+router.get('/get-transaction-by-type', controller.getTransactionsByType);
+
+router.post('/saving-category-goal', controller.createSavingCategoryGoal);
+
+router.get('/saving-category-goal', controller.getSavingCategoryGoalByUserId);
+
+router.put('/saving-category-goal/:id', controller.updateSavingCategoryGoal);
+
 /**
  * @swagger
  * /v1/transaction/saving-goal:

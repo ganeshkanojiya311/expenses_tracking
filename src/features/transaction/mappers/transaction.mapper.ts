@@ -6,7 +6,7 @@ import {
 import { ITransactionDocument } from '../models/transaction.model';
 
 export class TransactionMapper {
-  static toEntity(doc: ITransactionDocument): Transaction {
+  static toEntity (doc: ITransactionDocument): Transaction {
     return new Transaction({
       id: doc._id.toString(),
       user_id: doc.user_id,
@@ -17,7 +17,7 @@ export class TransactionMapper {
     });
   }
 
-  static toModel(entity: Partial<Transaction>): Partial<ITransactionDocument> {
+  static toModel (entity: Partial<Transaction>): Partial<ITransactionDocument> {
     const models: any = { ...entity };
     if (entity.id) {
       models._id = entity.id;
@@ -26,11 +26,11 @@ export class TransactionMapper {
     return models;
   }
 
-  static toEntities(docs: ITransactionDocument[]): Transaction[] {
+  static toEntities (docs: ITransactionDocument[]): Transaction[] {
     return docs.map((doc) => this.toEntity(doc));
   }
 
-  static toModels(
+  static toModels (
     entities: Partial<Transaction>[],
   ): Partial<ITransactionDocument>[] {
     return entities.map((entity) => this.toModel(entity));

@@ -7,6 +7,7 @@ import { SavingGoal } from '../entities/savingGoal.entity';
 import {
   Transaction,
   TransactionCategory,
+  TransactionType,
 } from '../entities/transaction.entity';
 import { ITransactionRepository } from '../interfaces/i-transaction.repository';
 import { SavingGoalMapper } from '../mappers/savingGoal.mapper';
@@ -22,19 +23,19 @@ import {
   startOfYear,
 } from 'date-fns';
 import { PeriodFilter } from '../types/types';
-import { CreateSavingCategoryGoalDTO } from '../dtos/savingCategoryGoal.dto';
+import { CreateSavingCategoryGoalDTO, UpdateSavingCategoryGoalDTO } from '../dtos/savingCategoryGoal.dto';
 import { SavingCategoryGoal } from '../entities/savingCategoryGoal.entity';
 import { SavingCategoryGoalMapper } from '../mappers/savingCategoryGoal.mapper';
 import { SavingCategoryGoalModel } from '../models/savingCategoryGoal.model';
 
 export class TransactionRepository implements ITransactionRepository {
-  private utcStartOfDay(d: Date): Date {
+  private utcStartOfDay (d: Date): Date {
     return new Date(
       Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0),
     );
   }
 
-  private utcEndOfDay(d: Date): Date {
+  private utcEndOfDay (d: Date): Date {
     return new Date(
       Date.UTC(
         d.getUTCFullYear(),
@@ -48,7 +49,7 @@ export class TransactionRepository implements ITransactionRepository {
     );
   }
 
-  private buildCreatedAtFilter(period?: PeriodFilter, date?: Date) {
+  private buildCreatedAtFilter (period?: PeriodFilter, date?: Date) {
     if (!period && !date) return {};
 
     // If only `date` is provided, filter by that specific day.
@@ -82,18 +83,18 @@ export class TransactionRepository implements ITransactionRepository {
     return { createdAt: { $gte: start, $lte: end } };
   }
 
-  async createTransaction(data: CreateTransactionDTO): Promise<Transaction> {
+  async createTransaction (data: CreateTransactionDTO): Promise<Transaction> {
     const modelData = TransactionMapper.toModel(data);
     const created = await TransactionModel.create(modelData);
     return TransactionMapper.toEntity(created);
   }
 
-  async getAllTransactions(
+  async getAllTransactions (
     page: number,
     limit: number,
     period?: PeriodFilter,
     date?: Date,
-  ): Promise<{ transactions: Transaction[]; totalItems: number }> {
+  ): Promise<{ transactions: Transaction[]; totalItems: number; }> {
     const skip = (page - 1) * limit;
     const filter = this.buildCreatedAtFilter(period, date);
 
@@ -105,20 +106,33 @@ export class TransactionRepository implements ITransactionRepository {
     return { transactions: TransactionMapper.toEntities(transactions), totalItems };
   }
 
-  async getTransactionsByUserId(
+  async getTransactionsByUserId (
     userId: string,
+    page: number,
+    limit: number,
     period?: PeriodFilter,
     date?: Date,
-  ): Promise<Transaction[]> {
+  ): Promise<{ transactions: Transaction[]; totalItems: number; }> {
+    const skip = (page - 1) * limit;
+
     const createdAtFilter = this.buildCreatedAtFilter(period, date);
-    const transactions = await TransactionModel.find({
+
+    const filter = {
       user_id: userId,
       ...createdAtFilter,
-    }).sort({ createdAt: -1 });
-    return TransactionMapper.toEntities(transactions);
+    };
+
+    const [transactions, totalItems] = await Promise.all([
+      TransactionModel.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      TransactionModel.countDocuments(filter),
+    ]);
+    return { transactions: TransactionMapper.toEntities(transactions), totalItems };
   }
 
-  async getRecentTransactions(
+  async getRecentTransactions (
     limit: number,
     userId: string,
   ): Promise<Transaction[]> {
@@ -128,7 +142,7 @@ export class TransactionRepository implements ITransactionRepository {
     return TransactionMapper.toEntities(transactions);
   }
 
-  async getTransactionsByCategory(
+  async getTransactionsByCategory (
     category: string,
     userId: string,
   ): Promise<Transaction[]> {
@@ -140,24 +154,61 @@ export class TransactionRepository implements ITransactionRepository {
     return TransactionMapper.toEntities(transactions);
   }
 
-  async createSavingCategoryGoal(data: CreateSavingCategoryGoalDTO): Promise<SavingCategoryGoal> {
+  async getTransactionsByType (
+    userId: string,
+    type: TransactionType,
+    page: number,
+    limit: number,
+    period?: PeriodFilter,
+    date?: Date
+  ): Promise<{ transactions: Transaction[]; totalItems: number; }> {
+    const skip = (page - 1) * limit;
+    const createdAtFilter = this.buildCreatedAtFilter(period, date);
+    const filter = {
+      user_id: userId,
+      type: type as unknown as TransactionType,
+      ...createdAtFilter,
+    };
+    const [transactions, totalItems] = await Promise.all([
+      TransactionModel.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      TransactionModel.countDocuments(filter),
+    ]);
+    return { transactions: TransactionMapper.toEntities(transactions), totalItems };
+  }
+
+  async createSavingCategoryGoal (data: CreateSavingCategoryGoalDTO): Promise<SavingCategoryGoal> {
     const modelData = SavingCategoryGoalMapper.toModel(data);
     const created = await SavingCategoryGoalModel.create(modelData);
     return SavingCategoryGoalMapper.toEntity(created);
   }
 
-  async createSavingGoal(data: CreateSavingGoalDTO): Promise<SavingGoal> {
+  async getSavingCategoryGoalByUserId (userId: string): Promise<SavingCategoryGoal[]> {
+    const goals = await SavingCategoryGoalModel.find({ user_id: userId });
+    return SavingCategoryGoalMapper.toEntities(goals);
+  }
+
+  async updateSavingCategoryGoal (id: string, data: UpdateSavingCategoryGoalDTO): Promise<SavingCategoryGoal | null> {
+    const updated = await SavingCategoryGoalModel.findByIdAndUpdate(id, data, {
+      new: true,
+    });
+    return updated ? SavingCategoryGoalMapper.toEntity(updated) : null;
+  }
+
+  async createSavingGoal (data: CreateSavingGoalDTO): Promise<SavingGoal> {
     const modelData = SavingGoalMapper.toModel(data);
     const created = await SavingGoalModel.create(modelData);
     return SavingGoalMapper.toEntity(created);
   }
 
-  async getSavingGoalByUserId(userId: string): Promise<SavingGoal | null> {
+  async getSavingGoalByUserId (userId: string): Promise<SavingGoal | null> {
     const goal = await SavingGoalModel.findOne({ user_id: userId });
     return goal ? SavingGoalMapper.toEntity(goal) : null;
   }
 
-  async updateSavingGoal(
+  async updateSavingGoal (
     id: string,
     data: UpdateSavingGoalDTO,
   ): Promise<SavingGoal | null> {
