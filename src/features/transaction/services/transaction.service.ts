@@ -152,21 +152,31 @@ export class TransactionService implements ITransactionService {
       throw new NotFoundError('Transactions not found');
     }
 
-    const categoryMap = new Map<string, number>();
+    const categoryMap = new Map<TransactionCategory, CategoryTotal>();
 
-    for (const { category, amount } of result.transactions) {
-      categoryMap.set(
-        category as unknown as string,
-        (categoryMap.get(category as unknown as string) ?? 0) + amount
-      );
+    for (const transaction of result.transactions) {
+      const { category, amount, type } = transaction;
+
+      if (!categoryMap.has(category)) {
+        categoryMap.set(category, {
+          category,
+          withdrawalTotal: 0,
+          depositTotal: 0,
+        });
+      }
+
+      const categoryTotal = categoryMap.get(category)!;
+
+      if (type === TransactionType.DEPOSIT) {
+        categoryTotal.depositTotal += amount;
+      }
+
+      if (type === TransactionType.WITHDRAWAL) {
+        categoryTotal.withdrawalTotal += amount;
+      }
     }
 
-    return Array.from(categoryMap, ([category, totalAmount]) => ({
-      type: result.transactions[0].type,
-      category: category as unknown as TransactionCategory,
-      totalAmount,
-      createdAt: result.transactions[0].createdAt,
-    }));
+    return Array.from(categoryMap.values());
   }
 
   async getTransactionsByType (
