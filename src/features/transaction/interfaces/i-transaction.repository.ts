@@ -57,4 +57,9 @@ export interface ITransactionRepository {
     id: string,
     data: UpdateSavingGoalDTO,
   ): Promise<SavingGoal | null>;
+  getTransactionsForAnalytics (
+    userId: string,
+    period: PeriodFilter,
+    date?: Date,
+  ): Promise<Transaction[]>;
 }

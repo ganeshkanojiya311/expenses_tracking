@@ -217,4 +217,18 @@ export class TransactionRepository implements ITransactionRepository {
     });
     return updated ? SavingGoalMapper.toEntity(updated) : null;
   }
+
+  async getTransactionsForAnalytics (
+    userId: string,
+    period: PeriodFilter,
+    date?: Date,
+  ): Promise<Transaction[]> {
+    const createdAtFilter = this.buildCreatedAtFilter(period, date);
+    const filter = {
+      user_id: userId,
+      ...createdAtFilter,
+    };
+    const transactions = await TransactionModel.find(filter).sort({ createdAt: -1 });
+    return TransactionMapper.toEntities(transactions);
+  }
 }

@@ -233,4 +233,22 @@ export class TransactionController {
       new SuccessResponse('Saving Goal updated successfully', result).send(res);
     }),
   ];
+
+  getTransactionAnalytics = [
+    validator(TransactionValidation.auth, ValidationSource.HEADER),
+    validator(TransactionValidation.query, ValidationSource.QUERY),
+    asyncHandler(async (req: Request, res: Response) => {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (!token) {
+        throw new BadRequestError('Token is required');
+      }
+      const period = req.query.period as PeriodFilter;
+      if (!period || !['week', 'month', 'year'].includes(period)) {
+        throw new BadRequestError('Period is required and must be week, month, or year');
+      }
+      const date = this.parseOptionalDate(req.query.date);
+      const result = await this.service.getTransactionAnalytics(token, period, date);
+      new SuccessResponse('Transaction analytics fetched successfully', result).send(res);
+    }),
+  ];
 }

@@ -7,7 +7,7 @@ import { CreateTransactionDTO } from '../dtos/transaction.dto';
 import { SavingCategoryGoal } from '../entities/savingCategoryGoal.entity';
 import { SavingGoal } from '../entities/savingGoal.entity';
 import { Transaction, TransactionType } from '../entities/transaction.entity';
-import { CategoryTotal, PaginationMeta, PeriodFilter } from '../types/types';
+import { AnalyticsResponse, CategoryTotal, PaginationMeta, PeriodFilter } from '../types/types';
 
 export interface ITransactionService {
   createTransaction (
@@ -67,4 +67,9 @@ export interface ITransactionService {
     id: string,
     data: UpdateSavingGoalDTO,
   ): Promise<SavingGoal | null>;
+  getTransactionAnalytics (
+    token: string,
+    period: PeriodFilter,
+    date?: Date,
+  ): Promise<AnalyticsResponse>;
 }
